@@ -4,9 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MIKELCS</title>
+<meta name="theme-color" content="#102A43">
 <style>
-:root{--bg:#0e1116;--card:#171c24;--text:#e6edf3;--muted:#8b98a8;--accent:#3fb950;--line:#262d38;--danger:#f85149;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
-@media (prefers-color-scheme:light){:root{--bg:#f6f8fa;--card:#fff;--text:#1f2328;--muted:#656d76;--accent:#1a7f37;--line:#d0d7de;--danger:#cf222e}}
+:root{--bg:#F5F7FA;--card:#fff;--text:#102A43;--muted:#64748B;--accent:#22A06B;--line:#E2E8F0;--danger:#dc2626}
+@media (prefers-color-scheme:dark){:root{--bg:#0B1F33;--card:#102A43;--text:#F5F7FA;--muted:#9FB3C8;--accent:#2BB67D;--line:#1F3D5C;--danger:#ff6b6b}}
+header{background:#102A43;color:#fff;display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;border-bottom:1px solid var(--line)}
+header b{font-size:20px;display:block;line-height:1.2}header small{color:#cbd5e1;font-size:13px}
+.logo{width:44px;height:44px;border-radius:12px;background:#22A06B;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.card{box-shadow:0 1px 3px rgba(16,42,67,.08)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:560px;margin:0 auto;padding:16px 16px 90px}
@@ -26,19 +31,20 @@ nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px}nav bu
 </style>
 </head>
 <body>
+<header><div class="logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></div><div><b>MIKELCS</b><small>Learn Smart. Code the Future.</small></div></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 var sb=supabase.createClient('https://ntdfgqlcqotbcsnbjeiz.supabase.co','sb_publishable_lsXrV4gzKRwFETXXq-iPow_1UrtAwIm');
-var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],deck:'',flip:false,idx:0,msg:'',ready:false};
+var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],lessons:[],oc:null,ol:null,deck:'',flip:false,idx:0,msg:'',ready:false};
 function $(i){return document.getElementById(i)}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function err(e){alert(e&&e.message?e.message:e)}
 async function run(p){var r=await p;if(r.error){err(r.error);return null}return r.data||true}
 async function load(){
-var r=await Promise.all([sb.from('courses').select('*').order('id'),sb.from('tasks').select('*').order('due',{nullsFirst:false}),sb.from('flashcards').select('*').order('id'),sb.from('catalog_courses').select('*').order('name'),sb.from('admins').select('user_id')]);
-S.courses=r[0].data||[];S.tasks=r[1].data||[];S.cards=r[2].data||[];S.cat=r[3].data||[];S.admin=!!(r[4].data&&r[4].data.length);
+var r=await Promise.all([sb.from('courses').select('*').order('id'),sb.from('tasks').select('*').order('due',{nullsFirst:false}),sb.from('flashcards').select('*').order('id'),sb.from('catalog_courses').select('*').order('name'),sb.from('admins').select('user_id'),sb.from('lessons').select('*').order('position')]);
+S.courses=r[0].data||[];S.tasks=r[1].data||[];S.cards=r[2].data||[];S.cat=r[3].data||[];S.admin=!!(r[4].data&&r[4].data.length);S.lessons=r[5].data||[];
 if(S.admin){var c=await sb.from('complaints').select('*').order('id',{ascending:false});S.cmp=c.data||[]}
 render()}
 sb.auth.onAuthStateChange(function(ev,s){S.u=s?s.user:null;S.ready=true;if(S.u)setTimeout(load,0);else{S.admin=false;render()}});
@@ -61,16 +67,17 @@ function deckCards(){var l=S.cards.filter(function(c){return c.deck==S.deck});va
 function mark(k){var l=deckCards();var c=l[S.idx%l.length];if(!k)S.idx++;S.flip=false;upd('flashcards',c.id,{known:k})}
 async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your message first');if(await run(sb.from('complaints').insert({message:m}))){$('cm').value='';alert('Thank you, your message was sent.')}}
 function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
+function fmt(t){return esc(t).split('\n').map(function(l){if(l.indexOf('## ')==0)return'<h2>'+l.slice(3)+'</h2>';if(l.indexOf('- ')==0)return'<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';return l?'<p>'+l+'</p>':''}).join('')}
 function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
 function render(){
 var h='',n='';
 if(!S.ready){$('app').innerHTML='<div class="small">Loading...</div>';return}
 if(!S.u){
-$('app').innerHTML='<h1>MIKELCS</h1><div class="small">Learn · Build · Grow</div><h2>Sign in or create an account</h2><div class="card"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password"><div class="row"><button class="pri" onclick="auth(\'in\')">Sign in</button><button onclick="auth(\'up\')">Create account</button></div></div>'+(S.msg?'<div class="small">'+esc(S.msg)+'</div>':'');
+$('app').innerHTML='<h1>Welcome</h1><div class="small">Sign in or create an account to start learning.</div><div class="card"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password"><div class="row"><button class="pri" onclick="auth(\'in\')">Sign in</button><button onclick="auth(\'up\')">Create account</button></div></div>'+(S.msg?'<div class="small">'+esc(S.msg)+'</div>':'');
 $('nav').innerHTML='';return}
 if(S.tab=='home'){
 var up=S.tasks.filter(function(t){return!t.done}).sort(function(a,b){return(a.due||'9')<(b.due||'9')?-1:1});
-h='<h1>MIKELCS</h1><div class="small">Your CS study hub</div><h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
+h='<h1>Home</h1><div class="small">Your CS study hub</div><h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
 }else if(S.tab=='courses'){
 h='<h1>Courses</h1>';
 if(S.cat.length)h+='<h2>Pick from the course list</h2><div class="row"><select id="cc">'+S.cat.map(function(c){return'<option value="'+c.id+'">'+esc((c.code?c.code+' ':'')+c.name)+'</option>'}).join('')+'</select><button class="pri" style="flex:0" onclick="addCat()">Add</button></div>';
@@ -86,6 +93,11 @@ if(decks.length){var l=deckCards(),c=l[S.idx%l.length];
 h+='<div class="chips">'+decks.map(function(d){return'<button class="'+(d==S.deck?'on':'')+'" onclick="pickDeck(this.textContent)">'+esc(d)+'</button>'}).join('')+'</div><div class="card flash" onclick="S.flip=!S.flip;render()">'+esc(S.flip?c.answer:c.question)+'</div><div class="small" style="text-align:center;margin-bottom:8px">Tap card to flip · '+l.length+' in this deck</div><div class="row"><button onclick="mark(false)">Review again</button><button class="pri" onclick="mark(true)">Got it</button></div>'}
 else h+='<div class="card small">No cards yet. Add your first one below.</div>';
 h+='<h2>Add card</h2><div class="card"><input id="cd" placeholder="Deck (e.g. Algorithms)" value="'+esc(S.deck)+'"><input id="cq" placeholder="Question"><input id="ca" placeholder="Answer"><button class="pri" style="width:100%" onclick="addCard()">Add card</button></div>';
+}else if(S.tab=='learn'){
+var oc=S.cat.find(function(c){return c.id==S.oc}),ls=S.lessons.filter(function(l){return l.course_id==S.oc}),ol=S.lessons.find(function(l){return l.id==S.ol});
+if(ol){h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:12px">'+esc(ol.title)+'</h1><div>'+fmt(ol.body)+'</div>'}
+else if(oc){h='<button onclick="S.oc=null;render()">← Courses</button><h1 style="margin-top:12px">'+esc(oc.name)+'</h1>'+(ls.length?ls.map(function(l,i){return'<div class="card" style="cursor:pointer" onclick="S.ol='+l.id+';render()">'+(i+1)+'. '+esc(l.title)+'</div>'}).join(''):'<div class="card small">Lessons coming soon.</div>')}
+else{h='<h1>Learn</h1><div class="small">Handouts for each course</div>'+S.cat.map(function(c){var n=S.lessons.filter(function(l){return l.course_id==c.id}).length;return'<div class="card" style="cursor:pointer" onclick="S.oc='+c.id+';render()">'+esc((c.code?c.code+' ':'')+c.name)+'<div class="small">'+n+' lesson'+(n==1?'':'s')+'</div></div>'}).join('')}
 }else if(S.tab=='more'){
 h='<h1>More</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
 }else if(S.tab=='admin'&&S.admin){
@@ -95,7 +107,7 @@ h+='<h2>Complaints ('+S.cmp.length+')</h2>'+(S.cmp.length?'':'<div class="card s
 S.cmp.forEach(function(m){h+='<div class="card'+(m.resolved?' done':'')+'"><span>'+esc(m.message)+'</span><div class="small">'+esc(new Date(m.created_at).toLocaleString())+'</div><div class="row" style="margin-top:8px"><button onclick="upd(\'complaints\','+m.id+',{resolved:'+!m.resolved+'})">'+(m.resolved?'Reopen':'Mark resolved')+'</button><button class="x" style="flex:1" onclick="del(\'complaints\','+m.id+')">Delete</button></div></div>'});
 }
 $('app').innerHTML=h;
-var tabs=[['home','Home'],['courses','Courses'],['cards','Cards'],['more','More']];if(S.admin)tabs.push(['admin','Admin']);
+var tabs=[['home','Home'],['courses','Courses'],['learn','Learn'],['cards','Cards'],['more','More']];if(S.admin)tabs.push(['admin','Admin']);
 $('nav').innerHTML=tabs.map(function(t){return'<button class="'+(S.tab==t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
 }
 render();
