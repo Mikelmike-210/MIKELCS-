@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MIKELCS</title>
+<style>
+:root{--bg:#0e1116;--card:#171c24;--text:#e6edf3;--muted:#8b98a8;--accent:#3fb950;--line:#262d38;--danger:#f85149;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:light){:root{--bg:#f6f8fa;--card:#fff;--text:#1f2328;--muted:#656d76;--accent:#1a7f37;--line:#d0d7de;--danger:#cf222e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px 16px 90px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:20px 0 8px;color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-width:100%}
+input,select,textarea{width:100%;margin-bottom:8px}
+button{cursor:pointer}.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+.task{display:flex;gap:10px;align-items:center}.task input{width:auto;margin:0}.task div{flex:1}
+.done span{text-decoration:line-through;color:var(--muted)}.small{font-size:13px;color:var(--muted)}
+.x{flex:0;padding:4px 10px;color:var(--danger)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px}nav button.on{color:var(--accent);font-weight:700}
+.flash{min-height:160px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;cursor:pointer}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.chips button{white-space:nowrap}.chips .on{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+var sb=supabase.createClient('https://ntdfgqlcqotbcsnbjeiz.supabase.co','sb_publishable_lsXrV4gzKRwFETXXq-iPow_1UrtAwIm');
+var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],deck:'',flip:false,idx:0,msg:'',ready:false};
+function $(i){return document.getElementById(i)}
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function err(e){alert(e&&e.message?e.message:e)}
+async function run(p){var r=await p;if(r.error){err(r.error);return null}return r.data||true}
+async function load(){
+var r=await Promise.all([sb.from('courses').select('*').order('id'),sb.from('tasks').select('*').order('due',{nullsFirst:false}),sb.from('flashcards').select('*').order('id'),sb.from('catalog_courses').select('*').order('name'),sb.from('admins').select('user_id')]);
+S.courses=r[0].data||[];S.tasks=r[1].data||[];S.cards=r[2].data||[];S.cat=r[3].data||[];S.admin=!!(r[4].data&&r[4].data.length);
+if(S.admin){var c=await sb.from('complaints').select('*').order('id',{ascending:false});S.cmp=c.data||[]}
+render()}
+sb.auth.onAuthStateChange(function(ev,s){S.u=s?s.user:null;S.ready=true;if(S.u)setTimeout(load,0);else{S.admin=false;render()}});
+async function auth(k){var e=$('em').value.trim(),p=$('pw').value;if(!e||!p)return err('Enter your email and password');
+var r=k=='up'?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
+if(r.error)return err(r.error);
+if(k=='up'&&!r.data.session){S.msg='Check your email to confirm your account, then sign in.';render()}}
+function out(){sb.auth.signOut()}
+function go(t){S.tab=t;render()}
+async function upd(t,id,o){await run(sb.from(t).update(o).eq('id',id));load()}
+async function del(t,id){if(!confirm('Delete this?'))return;await run(sb.from(t).delete().eq('id',id));load()}
+async function add(t,o){if(await run(sb.from(t).insert(o)))load()}
+function cname(id){var c=S.courses.find(function(x){return x.id==id});return c?c.name:'General'}
+function addCourse(){var v=$('cn').value.trim();if(v)add('courses',{name:v})}
+function addCat(){var c=S.cat.find(function(x){return x.id==$('cc').value});if(c)add('courses',{name:(c.code?c.code+' ':'')+c.name})}
+function addTask(){var t=$('tt').value.trim();if(t)add('tasks',{course_id:$('tc').value||null,title:t,due:$('td').value||null})}
+function addCard(){var q=$('cq').value.trim(),a=$('ca').value.trim(),d=$('cd').value.trim()||'General';if(!q||!a)return;S.deck=d;S.idx=0;S.flip=false;add('flashcards',{deck:d,question:q,answer:a})}
+function pickDeck(d){S.deck=d;S.idx=0;S.flip=false;render()}
+function deckCards(){var l=S.cards.filter(function(c){return c.deck==S.deck});var r=l.filter(function(c){return!c.known});return r.length?r:l}
+function mark(k){var l=deckCards();var c=l[S.idx%l.length];if(!k)S.idx++;S.flip=false;upd('flashcards',c.id,{known:k})}
+async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your message first');if(await run(sb.from('complaints').insert({message:m}))){$('cm').value='';alert('Thank you, your message was sent.')}}
+function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
+function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
+function render(){
+var h='',n='';
+if(!S.ready){$('app').innerHTML='<div class="small">Loading...</div>';return}
+if(!S.u){
+$('app').innerHTML='<h1>MIKELCS</h1><div class="small">Learn · Build · Grow</div><h2>Sign in or create an account</h2><div class="card"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password"><div class="row"><button class="pri" onclick="auth(\'in\')">Sign in</button><button onclick="auth(\'up\')">Create account</button></div></div>'+(S.msg?'<div class="small">'+esc(S.msg)+'</div>':'');
+$('nav').innerHTML='';return}
+if(S.tab=='home'){
+var up=S.tasks.filter(function(t){return!t.done}).sort(function(a,b){return(a.due||'9')<(b.due||'9')?-1:1});
+h='<h1>MIKELCS</h1><div class="small">Your CS study hub</div><h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
+}else if(S.tab=='courses'){
+h='<h1>Courses</h1>';
+if(S.cat.length)h+='<h2>Pick from the course list</h2><div class="row"><select id="cc">'+S.cat.map(function(c){return'<option value="'+c.id+'">'+esc((c.code?c.code+' ':'')+c.name)+'</option>'}).join('')+'</select><button class="pri" style="flex:0" onclick="addCat()">Add</button></div>';
+h+='<h2>Or add your own</h2><div class="row"><input id="cn" placeholder="New course"><button class="pri" style="flex:0" onclick="addCourse()">Add</button></div>';
+h+='<h2>Add task</h2><div class="card"><select id="tc"><option value="">General</option>'+S.courses.map(function(c){return'<option value="'+c.id+'">'+esc(c.name)+'</option>'}).join('')+'</select><input id="tt" placeholder="Assignment / exam"><input id="td" type="date"><button class="pri" style="width:100%" onclick="addTask()">Add task</button></div>';
+S.courses.forEach(function(c){var ts=S.tasks.filter(function(t){return t.course_id==c.id});h+='<h2>'+esc(c.name)+' <button class="x" onclick="del(\'courses\','+c.id+')">delete</button></h2>'+(ts.length?ts.map(th).join(''):'<div class="small">No tasks yet</div>')});
+var g=S.tasks.filter(function(t){return!t.course_id});if(g.length)h+='<h2>General</h2>'+g.map(th).join('');
+}else if(S.tab=='cards'){
+var decks=[];S.cards.forEach(function(c){if(decks.indexOf(c.deck)<0)decks.push(c.deck)});
+if(!S.deck||decks.indexOf(S.deck)<0)S.deck=decks[0]||'General';
+h='<h1>Flashcards</h1>';
+if(decks.length){var l=deckCards(),c=l[S.idx%l.length];
+h+='<div class="chips">'+decks.map(function(d){return'<button class="'+(d==S.deck?'on':'')+'" onclick="pickDeck(this.textContent)">'+esc(d)+'</button>'}).join('')+'</div><div class="card flash" onclick="S.flip=!S.flip;render()">'+esc(S.flip?c.answer:c.question)+'</div><div class="small" style="text-align:center;margin-bottom:8px">Tap card to flip · '+l.length+' in this deck</div><div class="row"><button onclick="mark(false)">Review again</button><button class="pri" onclick="mark(true)">Got it</button></div>'}
+else h+='<div class="card small">No cards yet. Add your first one below.</div>';
+h+='<h2>Add card</h2><div class="card"><input id="cd" placeholder="Deck (e.g. Algorithms)" value="'+esc(S.deck)+'"><input id="cq" placeholder="Question"><input id="ca" placeholder="Answer"><button class="pri" style="width:100%" onclick="addCard()">Add card</button></div>';
+}else if(S.tab=='more'){
+h='<h1>More</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
+}else if(S.tab=='admin'&&S.admin){
+h='<h1>Admin</h1><h2>Add to course list</h2><div class="card"><input id="ac" placeholder="Course code (optional, e.g. CSC101)"><input id="an" placeholder="Course name"><button class="pri" style="width:100%" onclick="addCatAdmin()">Add course</button></div>';
+S.cat.forEach(function(c){h+='<div class="card task"><div>'+esc((c.code?c.code+' ':'')+c.name)+'</div><button class="x" onclick="del(\'catalog_courses\','+c.id+')">✕</button></div>'});
+h+='<h2>Complaints ('+S.cmp.length+')</h2>'+(S.cmp.length?'':'<div class="card small">No complaints yet.</div>');
+S.cmp.forEach(function(m){h+='<div class="card'+(m.resolved?' done':'')+'"><span>'+esc(m.message)+'</span><div class="small">'+esc(new Date(m.created_at).toLocaleString())+'</div><div class="row" style="margin-top:8px"><button onclick="upd(\'complaints\','+m.id+',{resolved:'+!m.resolved+'})">'+(m.resolved?'Reopen':'Mark resolved')+'</button><button class="x" style="flex:1" onclick="del(\'complaints\','+m.id+')">Delete</button></div></div>'});
+}
+$('app').innerHTML=h;
+var tabs=[['home','Home'],['courses','Courses'],['cards','Cards'],['more','More']];if(S.admin)tabs.push(['admin','Admin']);
+$('nav').innerHTML=tabs.map(function(t){return'<button class="'+(S.tab==t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
+}
+render();
+</script>
+</body>
+</html>
