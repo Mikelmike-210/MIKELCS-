@@ -23,6 +23,7 @@ button{cursor:pointer}.pri{background:var(--accent);border-color:var(--accent);c
 .row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
 .task{display:flex;gap:10px;align-items:center}.task input{width:auto;margin:0}.task div{flex:1}
 .done span{text-decoration:line-through;color:var(--muted)}.small{font-size:13px;color:var(--muted)}
+code{background:var(--bg);border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:.9em}
 .x{flex:0;padding:4px 10px;color:var(--danger)}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
 nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px}nav button.on{color:var(--accent);font-weight:700}
@@ -67,7 +68,7 @@ function deckCards(){var l=S.cards.filter(function(c){return c.deck==S.deck});va
 function mark(k){var l=deckCards();var c=l[S.idx%l.length];if(!k)S.idx++;S.flip=false;upd('flashcards',c.id,{known:k})}
 async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your message first');if(await run(sb.from('complaints').insert({message:m}))){$('cm').value='';alert('Thank you, your message was sent.')}}
 function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
-function fmt(t){return esc(t).split('\n').map(function(l){l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');if(l.indexOf('## ')==0)return'<h2 style="color:var(--accent);font-size:18px;margin:24px 0 6px">'+l.slice(3)+'</h2>';if(l.indexOf('### ')==0)return'<h3 style="margin:14px 0 4px;font-size:16px">'+l.slice(4)+'</h3>';if(l.indexOf('- ')==0)return'<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';if(/^\d+\. /.test(l))return'<div style="margin:4px 0 4px 12px">'+l+'</div>';return l?'<p style="margin:8px 0">'+l+'</p>':''}).join('')}
+function fmt(t){var o='',c=false,b=[];esc(t).split('\n').forEach(function(l){if(l.trim()=='[code]'){c=true;b=[];return}if(l.trim()=='[/code]'){o+='<pre style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.5 ui-monospace,Consolas,monospace;margin:8px 0">'+b.join('\n')+'</pre>';c=false;return}if(c){b.push(l);return}l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');if(l.indexOf('## ')==0)o+='<h2 style="color:var(--accent);font-size:18px;margin:24px 0 6px">'+l.slice(3)+'</h2>';else if(l.indexOf('### ')==0)o+='<h3 style="margin:14px 0 4px;font-size:16px">'+l.slice(4)+'</h3>';else if(l.indexOf('- ')==0)o+='<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';else if(/^\d+\. /.test(l))o+='<div style="margin:4px 0 4px 12px">'+l+'</div>';else if(l)o+='<p style="margin:8px 0">'+l+'</p>'});return o}
 function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
 function render(){
 var h='',n='';
