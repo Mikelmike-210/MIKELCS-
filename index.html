@@ -67,7 +67,7 @@ function deckCards(){var l=S.cards.filter(function(c){return c.deck==S.deck});va
 function mark(k){var l=deckCards();var c=l[S.idx%l.length];if(!k)S.idx++;S.flip=false;upd('flashcards',c.id,{known:k})}
 async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your message first');if(await run(sb.from('complaints').insert({message:m}))){$('cm').value='';alert('Thank you, your message was sent.')}}
 function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
-function fmt(t){return esc(t).split('\n').map(function(l){if(l.indexOf('## ')==0)return'<h2>'+l.slice(3)+'</h2>';if(l.indexOf('- ')==0)return'<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';return l?'<p>'+l+'</p>':''}).join('')}
+function fmt(t){return esc(t).split('\n').map(function(l){l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');if(l.indexOf('## ')==0)return'<h2 style="color:var(--accent);font-size:18px;margin:24px 0 6px">'+l.slice(3)+'</h2>';if(l.indexOf('### ')==0)return'<h3 style="margin:14px 0 4px;font-size:16px">'+l.slice(4)+'</h3>';if(l.indexOf('- ')==0)return'<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';if(/^\d+\. /.test(l))return'<div style="margin:4px 0 4px 12px">'+l+'</div>';return l?'<p style="margin:8px 0">'+l+'</p>':''}).join('')}
 function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
 function render(){
 var h='',n='';
