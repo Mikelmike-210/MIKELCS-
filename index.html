@@ -26,7 +26,7 @@ button{cursor:pointer}.pri{background:var(--accent);border-color:var(--accent);c
 code{background:var(--bg);border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:.9em}
 .x{flex:0;padding:4px 10px;color:var(--danger)}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
-nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px}nav button.on{color:var(--accent);font-weight:700}
+nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 2px;font-size:13px}nav button.on{color:var(--accent);font-weight:700}
 .flash{min-height:160px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;cursor:pointer}
 .chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.chips button{white-space:nowrap}.chips .on{background:var(--accent);color:#fff;border-color:var(--accent)}
 </style>
@@ -69,6 +69,7 @@ function mark(k){var l=deckCards();var c=l[S.idx%l.length];if(!k)S.idx++;S.flip=
 async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your message first');if(await run(sb.from('complaints').insert({message:m}))){$('cm').value='';alert('Thank you, your message was sent.')}}
 function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
 function fmt(t){var o='',c=false,b=[];esc(t).split('\n').forEach(function(l){if(l.trim()=='[code]'){c=true;b=[];return}if(l.trim()=='[/code]'){o+='<pre style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.5 ui-monospace,Consolas,monospace;margin:8px 0">'+b.join('\n')+'</pre>';c=false;return}if(c){b.push(l);return}l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');if(l.indexOf('## ')==0)o+='<h2 style="color:var(--accent);font-size:18px;margin:24px 0 6px">'+l.slice(3)+'</h2>';else if(l.indexOf('### ')==0)o+='<h3 style="margin:14px 0 4px;font-size:16px">'+l.slice(4)+'</h3>';else if(l.indexOf('- ')==0)o+='<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';else if(/^\d+\. /.test(l))o+='<div style="margin:4px 0 4px 12px">'+l+'</div>';else if(l)o+='<p style="margin:8px 0">'+l+'</p>'});return o}
+function lb(c){var m=S.cat.find(function(x){return(x.code?x.code+' ':'')+x.name==c.name});return m&&S.lessons.some(function(l){return l.course_id==m.id})?'<button class="pri" style="margin-bottom:8px" onclick="S.tab=\'learn\';S.oc='+m.id+';S.ol=null;render()">Open lessons</button>':''}
 function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
 function render(){
 var h='',n='';
@@ -80,11 +81,11 @@ if(S.tab=='home'){
 var up=S.tasks.filter(function(t){return!t.done}).sort(function(a,b){return(a.due||'9')<(b.due||'9')?-1:1});
 h='<h1>Home</h1><div class="small">Your CS study hub</div><h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
 }else if(S.tab=='courses'){
-h='<h1>Courses</h1>';
+h='<h1>My Courses</h1>';
 if(S.cat.length)h+='<h2>Pick from the course list</h2><div class="row"><select id="cc">'+S.cat.map(function(c){return'<option value="'+c.id+'">'+esc((c.code?c.code+' ':'')+c.name)+'</option>'}).join('')+'</select><button class="pri" style="flex:0" onclick="addCat()">Add</button></div>';
 h+='<h2>Or add your own</h2><div class="row"><input id="cn" placeholder="New course"><button class="pri" style="flex:0" onclick="addCourse()">Add</button></div>';
 h+='<h2>Add task</h2><div class="card"><select id="tc"><option value="">General</option>'+S.courses.map(function(c){return'<option value="'+c.id+'">'+esc(c.name)+'</option>'}).join('')+'</select><input id="tt" placeholder="Assignment / exam"><input id="td" type="date"><button class="pri" style="width:100%" onclick="addTask()">Add task</button></div>';
-S.courses.forEach(function(c){var ts=S.tasks.filter(function(t){return t.course_id==c.id});h+='<h2>'+esc(c.name)+' <button class="x" onclick="del(\'courses\','+c.id+')">delete</button></h2>'+(ts.length?ts.map(th).join(''):'<div class="small">No tasks yet</div>')});
+S.courses.forEach(function(c){var ts=S.tasks.filter(function(t){return t.course_id==c.id});h+='<h2>'+esc(c.name)+' <button class="x" onclick="del(\'courses\','+c.id+')">delete</button></h2>'+lb(c)+(ts.length?ts.map(th).join(''):'<div class="small">No tasks yet</div>')});
 var g=S.tasks.filter(function(t){return!t.course_id});if(g.length)h+='<h2>General</h2>'+g.map(th).join('');
 }else if(S.tab=='cards'){
 var decks=[];S.cards.forEach(function(c){if(decks.indexOf(c.deck)<0)decks.push(c.deck)});
@@ -108,7 +109,7 @@ h+='<h2>Complaints ('+S.cmp.length+')</h2>'+(S.cmp.length?'':'<div class="card s
 S.cmp.forEach(function(m){h+='<div class="card'+(m.resolved?' done':'')+'"><span>'+esc(m.message)+'</span><div class="small">'+esc(new Date(m.created_at).toLocaleString())+'</div><div class="row" style="margin-top:8px"><button onclick="upd(\'complaints\','+m.id+',{resolved:'+!m.resolved+'})">'+(m.resolved?'Reopen':'Mark resolved')+'</button><button class="x" style="flex:1" onclick="del(\'complaints\','+m.id+')">Delete</button></div></div>'});
 }
 $('app').innerHTML=h;
-var tabs=[['home','Home'],['courses','Courses'],['learn','Learn'],['cards','Cards'],['more','More']];if(S.admin)tabs.push(['admin','Admin']);
+var tabs=[['home','Home'],['courses','My Courses'],['learn','Learn'],['cards','Cards'],['more','More']];if(S.admin)tabs.push(['admin','Admin']);
 $('nav').innerHTML=tabs.map(function(t){return'<button class="'+(S.tab==t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
 }
 render();
