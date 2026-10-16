@@ -24,6 +24,7 @@ button{cursor:pointer}.pri{background:var(--accent);border-color:var(--accent);c
 .task{display:flex;gap:10px;align-items:center}.task input{width:auto;margin:0}.task div{flex:1}
 .done span{text-decoration:line-through;color:var(--muted)}.small{font-size:13px;color:var(--muted)}
 code{background:var(--bg);border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Consolas,monospace;font-size:.9em}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;background:var(--accent)}
 .x{flex:0;padding:4px 10px;color:var(--danger)}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
 nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 2px;font-size:13px}nav button.on{color:var(--accent);font-weight:700}
@@ -38,14 +39,14 @@ nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 2px;fo
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 var sb=supabase.createClient('https://ntdfgqlcqotbcsnbjeiz.supabase.co','sb_publishable_lsXrV4gzKRwFETXXq-iPow_1UrtAwIm');
-var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],lessons:[],oc:null,ol:null,deck:'',flip:false,idx:0,msg:'',ready:false};
+var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],lessons:[],prog:{},oc:null,ol:null,deck:'',flip:false,idx:0,msg:'',ready:false};
 function $(i){return document.getElementById(i)}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function err(e){alert(e&&e.message?e.message:e)}
 async function run(p){var r=await p;if(r.error){err(r.error);return null}return r.data||true}
 async function load(){
-var r=await Promise.all([sb.from('courses').select('*').order('id'),sb.from('tasks').select('*').order('due',{nullsFirst:false}),sb.from('flashcards').select('*').order('id'),sb.from('catalog_courses').select('*').order('name'),sb.from('admins').select('user_id'),sb.from('lessons').select('*').order('position')]);
-S.courses=r[0].data||[];S.tasks=r[1].data||[];S.cards=r[2].data||[];S.cat=r[3].data||[];S.admin=!!(r[4].data&&r[4].data.length);S.lessons=r[5].data||[];
+var r=await Promise.all([sb.from('courses').select('*').order('id'),sb.from('tasks').select('*').order('due',{nullsFirst:false}),sb.from('flashcards').select('*').order('id'),sb.from('catalog_courses').select('*').order('name'),sb.from('admins').select('user_id'),sb.from('lessons').select('*').order('position'),sb.from('lesson_progress').select('lesson_id')]);
+S.courses=r[0].data||[];S.tasks=r[1].data||[];S.cards=r[2].data||[];S.cat=r[3].data||[];S.admin=!!(r[4].data&&r[4].data.length);S.lessons=r[5].data||[];S.prog={};(r[6].data||[]).forEach(function(p){S.prog[p.lesson_id]=1});
 if(S.admin){var c=await sb.from('complaints').select('*').order('id',{ascending:false});S.cmp=c.data||[]}
 render()}
 sb.auth.onAuthStateChange(function(ev,s){S.u=s?s.user:null;S.ready=true;if(S.u)setTimeout(load,0);else{S.admin=false;render()}});
@@ -70,6 +71,13 @@ async function sendC(){var m=$('cm').value.trim();if(!m)return err('Write your m
 function addCatAdmin(){var n=$('an').value.trim();if(n)add('catalog_courses',{code:$('ac').value.trim()||null,name:n})}
 function fmt(t){var o='',c=false,b=[];esc(t).split('\n').forEach(function(l){if(l.trim()=='[code]'){c=true;b=[];return}if(l.trim()=='[/code]'){o+='<pre style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;font:13px/1.5 ui-monospace,Consolas,monospace;margin:8px 0">'+b.join('\n')+'</pre>';c=false;return}if(c){b.push(l);return}l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');if(l.indexOf('## ')==0)o+='<h2 style="color:var(--accent);font-size:18px;margin:24px 0 6px">'+l.slice(3)+'</h2>';else if(l.indexOf('### ')==0)o+='<h3 style="margin:14px 0 4px;font-size:16px">'+l.slice(4)+'</h3>';else if(l.indexOf('- ')==0)o+='<div style="margin:4px 0 4px 12px">• '+l.slice(2)+'</div>';else if(/^\d+\. /.test(l))o+='<div style="margin:4px 0 4px 12px">'+l+'</div>';else if(l)o+='<p style="margin:8px 0">'+l+'</p>'});return o}
 function lb(c){var m=S.cat.find(function(x){return(x.code?x.code+' ':'')+x.name==c.name});return m&&S.lessons.some(function(l){return l.course_id==m.id})?'<button class="pri" style="margin-bottom:8px" onclick="S.tab=\'learn\';S.oc='+m.id+';S.ol=null;render()">Open lessons</button>':''}
+function cprog(cid){var ls=S.lessons.filter(function(l){return l.course_id==cid});return[ls.filter(function(l){return S.prog[l.id]}).length,ls.length]}
+function openL(id){S.ol=id;try{localStorage.setItem('mk_last',id)}catch(e){}render();window.scrollTo(0,0)}
+function goL(c,l){S.tab='learn';S.oc=c;openL(l)}
+async function tglP(id){if(S.prog[id])await run(sb.from('lesson_progress').delete().eq('lesson_id',id));else await run(sb.from('lesson_progress').insert({lesson_id:id}));load()}
+function filt(v){v=v.toLowerCase();document.querySelectorAll('.cc').forEach(function(e){e.style.display=e.getAttribute('data-s').indexOf(v)<0?'none':''})}
+function cont(){var last=null;try{last=localStorage.getItem('mk_last')}catch(e){}var l=S.lessons.find(function(x){return x.id==last});var cid=l?l.course_id:(S.lessons[0]&&S.lessons[0].course_id);if(!cid)return null;var n=S.lessons.filter(function(x){return x.course_id==cid}).find(function(x){return!S.prog[x.id]});return{c:cid,l:n||null}}
+function hc(){var tot=S.lessons.length,dn=S.lessons.filter(function(l){return S.prog[l.id]}).length,c=cont(),oc=c&&S.cat.find(function(x){return x.id==c.c});if(!oc)return'';var pct=tot?Math.round(dn*100/tot):0;return'<div class="card" style="margin-top:12px;background:#102A43;color:#fff;border:0"><div class="small" style="color:#9FE3C5">CONTINUE LEARNING</div><div style="font-size:18px;font-weight:700;margin:4px 0">'+esc(oc.name)+'</div>'+(c.l?'<div style="color:#cbd5e1;margin-bottom:10px">Next: '+esc(c.l.title)+'</div><button class="pri" style="width:100%" onclick="goL('+c.c+','+c.l.id+')">Continue</button>':'<div style="color:#cbd5e1;margin-bottom:10px">You finished this course. Great work!</div><button class="pri" style="width:100%" onclick="S.tab=\'learn\';S.oc=null;render()">Browse courses</button>')+'<div class="bar"><i style="width:'+pct+'%"></i></div><div style="color:#cbd5e1;font-size:13px;margin-top:6px">'+dn+' of '+tot+' lessons completed overall</div></div>'}
 function th(t){return '<div class="card task'+(t.done?' done':'')+'"><input type="checkbox" '+(t.done?'checked ':'')+'onchange="upd(\'tasks\','+t.id+',{done:'+!t.done+'})"><div><span>'+esc(t.title)+'</span><div class="small">'+esc(cname(t.course_id))+(t.due?' · due '+esc(t.due):'')+'</div></div><button class="x" onclick="del(\'tasks\','+t.id+')">✕</button></div>'}
 function render(){
 var h='',n='';
@@ -79,7 +87,7 @@ $('app').innerHTML='<h1>Welcome</h1><div class="small">Sign in or create an acco
 $('nav').innerHTML='';return}
 if(S.tab=='home'){
 var up=S.tasks.filter(function(t){return!t.done}).sort(function(a,b){return(a.due||'9')<(b.due||'9')?-1:1});
-h='<h1>Home</h1><div class="small">Your CS study hub</div><h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
+h='<h1>Welcome back</h1><div class="small">'+esc(S.u.email.split('@')[0])+'</div>'+hc()+'<h2>Upcoming</h2>'+(up.length?up.slice(0,6).map(th).join(''):'<div class="card small">Nothing due. Add tasks in Courses.</div>')+'<button class="pri" style="width:100%;margin-top:8px" onclick="go(\'cards\')">Review flashcards</button>';
 }else if(S.tab=='courses'){
 h='<h1>My Courses</h1>';
 if(S.cat.length)h+='<h2>Pick from the course list</h2><div class="row"><select id="cc">'+S.cat.map(function(c){return'<option value="'+c.id+'">'+esc((c.code?c.code+' ':'')+c.name)+'</option>'}).join('')+'</select><button class="pri" style="flex:0" onclick="addCat()">Add</button></div>';
@@ -97,9 +105,10 @@ else h+='<div class="card small">No cards yet. Add your first one below.</div>';
 h+='<h2>Add card</h2><div class="card"><input id="cd" placeholder="Deck (e.g. Algorithms)" value="'+esc(S.deck)+'"><input id="cq" placeholder="Question"><input id="ca" placeholder="Answer"><button class="pri" style="width:100%" onclick="addCard()">Add card</button></div>';
 }else if(S.tab=='learn'){
 var oc=S.cat.find(function(c){return c.id==S.oc}),ls=S.lessons.filter(function(l){return l.course_id==S.oc}),ol=S.lessons.find(function(l){return l.id==S.ol});
-if(ol){h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:12px">'+esc(ol.title)+'</h1><div>'+fmt(ol.body)+'</div>'}
-else if(oc){h='<button onclick="S.oc=null;render()">← Courses</button><h1 style="margin-top:12px">'+esc(oc.name)+'</h1>'+(ls.length?ls.map(function(l,i){return'<div class="card" style="cursor:pointer" onclick="S.ol='+l.id+';render()">'+(i+1)+'. '+esc(l.title)+'</div>'}).join(''):'<div class="card small">Lessons coming soon.</div>')}
-else{h='<h1>Learn</h1><div class="small">Handouts for each course</div>'+S.cat.map(function(c){var n=S.lessons.filter(function(l){return l.course_id==c.id}).length;return'<div class="card" style="cursor:pointer" onclick="S.oc='+c.id+';render()">'+esc((c.code?c.code+' ':'')+c.name)+'<div class="small">'+n+' lesson'+(n==1?'':'s')+'</div></div>'}).join('')}
+if(ol){var ix=ls.findIndex(function(l){return l.id==ol.id}),nx=ls[ix+1],dn=S.prog[ol.id];
+h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:12px">'+esc(ol.title)+'</h1><div>'+fmt(ol.body)+'</div><button class="'+(dn?'':'pri')+'" style="width:100%;margin-top:20px" onclick="tglP('+ol.id+')">'+(dn?'✓ Completed (tap to undo)':'Mark as complete')+'</button>'+(nx?'<button style="width:100%;margin-top:8px" onclick="openL('+nx.id+')">Next lesson →</button>':'')}
+else if(oc){var cp=cprog(oc.id);h='<button onclick="S.oc=null;render()">← Courses</button><h1 style="margin-top:12px">'+esc(oc.name)+'</h1><div class="small">'+cp[0]+' of '+cp[1]+' lessons completed</div><div class="bar"><i style="width:'+(cp[1]?Math.round(cp[0]*100/cp[1]):0)+'%"></i></div><div style="margin-top:12px"></div>'+(ls.length?ls.map(function(l,i){return'<div class="card" style="cursor:pointer" onclick="openL('+l.id+')">'+(S.prog[l.id]?'✓ ':'')+(i+1)+'. '+esc(l.title)+'</div>'}).join(''):'<div class="card small">Lessons coming soon.</div>')}
+else{h='<h1>Learn</h1><div class="small">Handouts for each course</div><input id="sq" placeholder="Search courses and lessons" oninput="filt(this.value)" style="margin-top:12px">'+S.cat.map(function(c){var cp=cprog(c.id),t=((c.code||'')+' '+c.name+' '+S.lessons.filter(function(l){return l.course_id==c.id}).map(function(l){return l.title}).join(' ')).toLowerCase();return'<div class="card cc" data-s="'+esc(t)+'" style="cursor:pointer" onclick="S.oc='+c.id+';render()">'+esc((c.code?c.code+' ':'')+c.name)+'<div class="small">'+cp[1]+' lesson'+(cp[1]==1?'':'s')+(cp[1]?' · '+cp[0]+' completed':'')+'</div>'+(cp[1]?'<div class="bar"><i style="width:'+Math.round(cp[0]*100/cp[1])+'%"></i></div>':'')+'</div>'}).join('')}
 }else if(S.tab=='more'){
 h='<h1>More</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
 }else if(S.tab=='admin'&&S.admin){
