@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#102A43">
 <style>
 :root{--bg:#F5F7FA;--card:#fff;--text:#102A43;--muted:#64748B;--accent:#22A06B;--line:#E2E8F0;--danger:#dc2626}
-@media (prefers-color-scheme:dark){:root{--bg:#0B1F33;--card:#102A43;--text:#F5F7FA;--muted:#9FB3C8;--accent:#2BB67D;--line:#1F3D5C;--danger:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#0B1F33;--card:#102A43;--text:#F5F7FA;--muted:#9FB3C8;--accent:#2BB67D;--line:#1F3D5C;--danger:#ff6b6b}
 header{background:#102A43;color:#fff;display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;border-bottom:1px solid var(--line)}
 header b{font-size:20px;display:block;line-height:1.2}header small{color:#cbd5e1;font-size:13px}
 .logo{width:44px;height:44px;border-radius:12px;background:#22A06B;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
@@ -40,6 +40,8 @@ nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 2px;fo
 <script>
 var sb=supabase.createClient('https://ntdfgqlcqotbcsnbjeiz.supabase.co','sb_publishable_lsXrV4gzKRwFETXXq-iPow_1UrtAwIm');
 var S={tab:'home',u:null,admin:false,courses:[],tasks:[],cards:[],cat:[],cmp:[],lessons:[],prog:{},oc:null,ol:null,deck:'',flip:false,idx:0,msg:'',ready:false};
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('mk_theme',t)}catch(e){}}
+setTheme((function(){try{return localStorage.getItem('mk_theme')||'light'}catch(e){return'light'}})());
 function $(i){return document.getElementById(i)}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function err(e){alert(e&&e.message?e.message:e)}
@@ -110,7 +112,7 @@ h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:1
 else if(oc){var cp=cprog(oc.id);h='<button onclick="S.oc=null;render()">← Courses</button><h1 style="margin-top:12px">'+esc(oc.name)+'</h1><div class="small">'+cp[0]+' of '+cp[1]+' lessons completed</div><div class="bar"><i style="width:'+(cp[1]?Math.round(cp[0]*100/cp[1]):0)+'%"></i></div><div style="margin-top:12px"></div>'+(ls.length?ls.map(function(l,i){return'<div class="card" style="cursor:pointer" onclick="openL('+l.id+')">'+(S.prog[l.id]?'✓ ':'')+(i+1)+'. '+esc(l.title)+'</div>'}).join(''):'<div class="card small">Lessons coming soon.</div>')}
 else{h='<h1>Learn</h1><div class="small">Handouts for each course</div><input id="sq" placeholder="Search courses and lessons" oninput="filt(this.value)" style="margin-top:12px">'+S.cat.map(function(c){var cp=cprog(c.id),t=((c.code||'')+' '+c.name+' '+S.lessons.filter(function(l){return l.course_id==c.id}).map(function(l){return l.title}).join(' ')).toLowerCase();return'<div class="card cc" data-s="'+esc(t)+'" style="cursor:pointer" onclick="S.oc='+c.id+';render()">'+esc((c.code?c.code+' ':'')+c.name)+'<div class="small">'+cp[1]+' lesson'+(cp[1]==1?'':'s')+(cp[1]?' · '+cp[0]+' completed':'')+'</div>'+(cp[1]?'<div class="bar"><i style="width:'+Math.round(cp[0]*100/cp[1])+'%"></i></div>':'')+'</div>'}).join('')}
 }else if(S.tab=='more'){
-h='<h1>More</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
+h='<h1>More</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Appearance</h2><div class="row"><button onclick="setTheme(\'light\');render()">Light</button><button onclick="setTheme(\'dark\');render()">Dark</button></div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
 }else if(S.tab=='admin'&&S.admin){
 h='<h1>Admin</h1><h2>Add to course list</h2><div class="card"><input id="ac" placeholder="Course code (optional, e.g. CSC101)"><input id="an" placeholder="Course name"><button class="pri" style="width:100%" onclick="addCatAdmin()">Add course</button></div>';
 S.cat.forEach(function(c){h+='<div class="card task"><div>'+esc((c.code?c.code+' ':'')+c.name)+'</div><button class="x" onclick="del(\'catalog_courses\','+c.id+')">✕</button></div>'});
