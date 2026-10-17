@@ -14,7 +14,7 @@ header b{font-size:20px;display:block;line-height:1.2}header small{color:#cbd5e1
 .card{box-shadow:0 1px 3px rgba(16,42,67,.08)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:560px;margin:0 auto;padding:16px 16px 40px}
+main{max-width:560px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom,0px));overflow-wrap:break-word}
 h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:20px 0 8px;color:var(--muted);font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
 input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-width:100%}
@@ -42,6 +42,29 @@ nav{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-b
 nav button{flex:1;border:0;background:none;color:var(--muted);padding:9px 2px;font-size:12px;border-radius:22px}nav button.on{background:var(--accent);color:#fff;font-weight:700}
 .flash{min-height:160px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;cursor:pointer}
 .chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px}.chips button{white-space:nowrap}.chips .on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.grid{display:block}
+body:not(.in) #dr{display:none}
+@media (min-width:700px){
+main{max-width:820px;padding:24px 24px 48px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid .card{margin-bottom:0}
+.hs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));overflow:visible}.fc{min-width:0}
+}
+@media (min-width:1024px){
+#dr{transform:none!important;width:260px;z-index:5}
+#ov{display:none}
+#mb{display:none!important}
+body.in main,body.in header{margin-left:260px}
+main{max-width:980px}
+.grid{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:360px){
+main{padding:12px 12px 32px}
+header{padding-left:12px;padding-right:12px}
+header small{display:none}
+.card{padding:10px}
+h1{font-size:20px}
+}
 </style>
 </head>
 <body>
@@ -169,10 +192,10 @@ else h+='<div class="card small">No cards yet. Add your first one below.</div>';
 h+='<h2>Add card</h2><div class="card"><input id="cd" placeholder="Deck (e.g. Algorithms)" value="'+esc(S.deck)+'"><input id="cq" placeholder="Question"><input id="ca" placeholder="Answer"><button class="pri" style="width:100%" onclick="addCard()">Add card</button></div>';
 }else if(S.tab=='learn'){
 var oc=S.cat.find(function(c){return c.id==S.oc}),ls=S.lessons.filter(function(l){return l.course_id==S.oc}),ol=S.lessons.find(function(l){return l.id==S.ol});
-if(S.qs){h=qhtml()}else if(ol){var ix=ls.findIndex(function(l){return l.id==ol.id}),nx=ls[ix+1],dn=S.prog[ol.id];
-h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:12px">'+esc(ol.title)+'</h1><div>'+fmt(ol.body)+'</div>'+lcard(ol)+'<button class="'+(dn?'':'pri')+'" style="width:100%;margin-top:20px" onclick="tglP('+ol.id+')">'+(dn?'✓ Completed (tap to undo)':'Mark as complete')+'</button>'+(nx?'<button style="width:100%;margin-top:8px" onclick="openL('+nx.id+')">Next lesson →</button>':'')}
-else if(oc){var cp=cprog(oc.id);h='<button onclick="S.oc=null;render()">← Courses</button><div class="card" style="margin-top:12px;background:linear-gradient(135deg,#102A43,#15603f);color:#fff;border:0"><div style="font-size:22px;font-weight:700">'+esc(oc.name)+'</div><div style="color:#cbd5e1;margin-top:4px">'+cp[1]+' lessons · '+cp[0]+' completed</div><div class="bar" style="background:rgba(255,255,255,.25)"><i style="width:'+(cp[1]?Math.round(cp[0]*100/cp[1]):0)+'%;background:#4ade80"></i></div></div>'+qcard(oc.id)+'<h2>Lessons</h2>'+(ls.length?ls.map(function(l,i){var d=S.prog[l.id];return'<div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="openL('+l.id+')"><div class="ic">'+(d?'✓':(i+1))+'</div><div style="flex:1"><b style="font-size:15px">'+esc(l.title)+'</b>'+(d?'<div style="color:var(--accent);font-size:12px;font-weight:700">COMPLETED</div>':'')+'</div><span style="color:var(--muted)">›</span></div>'}).join(''):'<div class="card small">Lessons coming soon.</div>')}
-else{var f=S.lf;h='<h1>Learn</h1><input id="sq" placeholder="Search courses and lessons" oninput="filt(this.value)" style="margin-top:8px"><div class="chips">'+[['all','All'],['prog','In progress'],['done','Completed']].map(function(x){return'<button class="'+(f==x[0]?'on':'')+'" onclick="S.lf=\''+x[0]+'\';render()">'+x[1]+'</button>'}).join('')+'</div>'+S.cat.filter(function(c){var p=cprog(c.id);return f=='all'||(f=='prog'&&p[0]>0&&p[0]<p[1])||(f=='done'&&p[1]>0&&p[0]==p[1])}).map(function(c){var p=cprog(c.id),t=((c.code||'')+' '+c.name+' '+S.lessons.filter(function(l){return l.course_id==c.id}).map(function(l){return l.title}).join(' ')).toLowerCase();return'<div class="card cc" data-s="'+esc(t)+'" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="S.oc='+c.id+';render()"><div class="ic">'+esc(c.name.charAt(0))+'</div><div style="flex:1"><b style="font-size:15px">'+esc((c.code?c.code+' ':'')+c.name)+'</b><div class="small">'+(p[1]?p[0]+' of '+p[1]+' lessons completed':'Lessons coming soon')+'</div>'+(p[1]?'<div class="bar"><i style="width:'+Math.round(p[0]*100/p[1])+'%"></i></div>':'')+'</div><div class="ic" style="background:var(--accent);color:#fff">›</div></div>'}).join('')}
+if(S.qs){h='<div style="max-width:640px;margin:0 auto">'+qhtml()+'</div>'}else if(ol){var ix=ls.findIndex(function(l){return l.id==ol.id}),nx=ls[ix+1],dn=S.prog[ol.id];
+h='<button onclick="S.ol=null;render()">← Back</button><h1 style="margin-top:12px">'+esc(ol.title)+'</h1><div style="max-width:720px">'+fmt(ol.body)+'</div>'+lcard(ol)+'<button class="'+(dn?'':'pri')+'" style="width:100%;margin-top:20px" onclick="tglP('+ol.id+')">'+(dn?'✓ Completed (tap to undo)':'Mark as complete')+'</button>'+(nx?'<button style="width:100%;margin-top:8px" onclick="openL('+nx.id+')">Next lesson →</button>':'')}
+else if(oc){var cp=cprog(oc.id);h='<button onclick="S.oc=null;render()">← Courses</button><div class="card" style="margin-top:12px;background:linear-gradient(135deg,#102A43,#15603f);color:#fff;border:0"><div style="font-size:22px;font-weight:700">'+esc(oc.name)+'</div><div style="color:#cbd5e1;margin-top:4px">'+cp[1]+' lessons · '+cp[0]+' completed</div><div class="bar" style="background:rgba(255,255,255,.25)"><i style="width:'+(cp[1]?Math.round(cp[0]*100/cp[1]):0)+'%;background:#4ade80"></i></div></div>'+qcard(oc.id)+'<h2>Lessons</h2>'+(ls.length?'<div class="grid">'+ls.map(function(l,i){var d=S.prog[l.id];return'<div class="card" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="openL('+l.id+')"><div class="ic">'+(d?'✓':(i+1))+'</div><div style="flex:1"><b style="font-size:15px">'+esc(l.title)+'</b>'+(d?'<div style="color:var(--accent);font-size:12px;font-weight:700">COMPLETED</div>':'')+'</div><span style="color:var(--muted)">›</span></div>'}).join('')+'</div>':'<div class="card small">Lessons coming soon.</div>')}
+else{var f=S.lf;h='<h1>Learn</h1><input id="sq" placeholder="Search courses and lessons" oninput="filt(this.value)" style="margin-top:8px"><div class="chips">'+[['all','All'],['prog','In progress'],['done','Completed']].map(function(x){return'<button class="'+(f==x[0]?'on':'')+'" onclick="S.lf=\''+x[0]+'\';render()">'+x[1]+'</button>'}).join('')+'</div><div class="grid">'+S.cat.filter(function(c){var p=cprog(c.id);return f=='all'||(f=='prog'&&p[0]>0&&p[0]<p[1])||(f=='done'&&p[1]>0&&p[0]==p[1])}).map(function(c){var p=cprog(c.id),t=((c.code||'')+' '+c.name+' '+S.lessons.filter(function(l){return l.course_id==c.id}).map(function(l){return l.title}).join(' ')).toLowerCase();return'<div class="card cc" data-s="'+esc(t)+'" style="cursor:pointer;display:flex;align-items:center;gap:12px" onclick="S.oc='+c.id+';render()"><div class="ic">'+esc(c.name.charAt(0))+'</div><div style="flex:1"><b style="font-size:15px">'+esc((c.code?c.code+' ':'')+c.name)+'</b><div class="small">'+(p[1]?p[0]+' of '+p[1]+' lessons completed':'Lessons coming soon')+'</div>'+(p[1]?'<div class="bar"><i style="width:'+Math.round(p[0]*100/p[1])+'%"></i></div>':'')+'</div><div class="ic" style="background:var(--accent);color:#fff">›</div></div>'}).join('')+'</div>'}
 }else if(S.tab=='quiz'){h=qzhtml()}else if(S.tab=='more'){
 h='<h1>Settings</h1><div class="small">Signed in as '+esc(S.u.email)+'</div><h2>Appearance</h2><div class="row"><button onclick="setTheme(\'light\');render()">Light</button><button onclick="setTheme(\'dark\');render()">Dark</button></div><h2>Report a problem</h2><div class="card"><textarea id="cm" rows="4" maxlength="2000" placeholder="Tell us what went wrong or what you would like improved"></textarea><button class="pri" style="width:100%" onclick="sendC()">Send</button></div><button style="width:100%;margin-top:8px" onclick="out()">Sign out</button>';
 }else if(S.tab=='admin'&&S.admin){h=ahtml()}
